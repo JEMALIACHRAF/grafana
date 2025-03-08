@@ -106,37 +106,6 @@ The dashboard provides various insights into air pollution and user activity.
 **2. User Trajectory & Humidity Impact**  
 ![Grafana Dashboard 2](data/grafana2.png)
 
----
-
-## Troubleshooting
-
-### Grafana Dashboard Not Loading?
-1. Restart services:  
-   ```bash
-   docker-compose restart
-   ```
-2. Check logs:  
-   ```bash
-   docker logs <container_name>
-   ```
-
-### No Data in Dashboards?
-- Ensure `import_data.py` has been executed.
-- Verify PostgreSQL tables contain records:  
-  ```sql
-  SELECT * FROM data_processed_vgp_cleaned LIMIT 10;
-  ```
-
-### User Trajectory Appears as Points Instead of Lines?
-- Verify **dashboard.json** contains:
-  ```json
-  "lineColor": "red",
-  "showLines": true,
-  "showPoints": false
-  ```
-- Ensure Grafana correctly loads the modified dashboard.
-
-
 
 
 
