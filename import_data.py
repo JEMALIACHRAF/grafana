@@ -18,16 +18,16 @@ engine = create_engine(f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT
 
 def restore_database():
     """Restore the database from the SQL dump file if needed."""
-    print("🔄 Restoring database from SQL dump...")
+    
     try:
         subprocess.run(
             f'psql -U {DB_USER} -d {DB_NAME} -h {DB_HOST} -p {DB_PORT} -f "{SQL_DUMP_PATH}"',
             shell=True,
             check=True,
         )
-        print("✅ Database restored successfully!")
+        
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error restoring database: {e}")
+        
         exit(1)
 
 def fetch_data(query):
@@ -38,7 +38,7 @@ def fetch_data(query):
 if os.path.exists(SQL_DUMP_PATH):
     restore_database()
 else:
-    print(f"⚠️ SQL dump file not found at {SQL_DUMP_PATH}. Skipping restoration.")
+    print(f"SQL dump file not found at {SQL_DUMP_PATH}. Skipping restoration.")
 
 # Fetch full datasets
 query_pollution = """
@@ -56,16 +56,16 @@ ORDER BY time;
 if __name__ == "__main__":
     # Load pollution data
     df_pollution = fetch_data(query_pollution)
-    print("📊 Pollution Data Sample:")
+    print("Pollution Data Sample:")
     print(df_pollution.head())
 
     # Load GPS data
     df_gps = fetch_data(query_gps)
-    print("\n📍 GPS Data Sample:")
+    print("GPS Data Sample:")
     print(df_gps.head())
 
     # 🔍 Fix Data Issues
-    print("\n🔧 Fixing Data Issues...")
+    print("\n Fixing Data Issues...")
 
     # Convert `participant_virtual_id` to integer
     df_pollution["participant_virtual_id"] = pd.to_numeric(df_pollution["participant_virtual_id"], errors="coerce").astype("Int64")
@@ -83,17 +83,17 @@ if __name__ == "__main__":
     df_pollution = df_pollution[df_pollution["time"].isin(common_timestamps)]
     df_gps = df_gps[df_gps["time"].isin(common_timestamps)]
 
-    print("\n✅ Data Cleaning Complete!")
+    print("\n Data Cleaning Complete!")
 
     # Export cleaned data for verification
     df_pollution.to_csv("clean_pollution_data.csv", index=False)
     df_gps.to_csv("clean_gps_data.csv", index=False)
 
-    print("\n📂 Cleaned data exported to CSV.")
+    print("\n Cleaned data exported to CSV.")
 
     # Save cleaned data back to PostgreSQL
-    print("\n🛠️ Updating PostgreSQL database...")
+    print("\n Updating PostgreSQL database...")
     df_pollution.to_sql("data_processed_vgp_cleaned", engine, if_exists="replace", index=False)
     df_gps.to_sql("clean_gps_cleaned", engine, if_exists="replace", index=False)
 
-    print("\n✅ Database updated with cleaned data!")
+    print("\n Database updated with cleaned data!")
