@@ -1,0 +1,200 @@
+{
+  "uid": "pollution-dashboard",
+  "title": "Air Pollution Monitoring",
+  "schemaVersion": 37,
+  "version": 6,
+  "refresh": "5s",
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "pollutant_var",
+        "label": "Select Pollutant",
+        "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'data_processed_vgp_cleaned' AND column_name IN ('NO2', 'PM2.5', 'PM10');",
+        "default": "NO2",
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "query",
+        "name": "user_var",
+        "label": "Select User",
+        "query": "SELECT DISTINCT participant_virtual_id FROM public.data_processed_vgp_cleaned;",
+        "default": "All",
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Pollution Levels Over Time",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT time, \"[[pollutant_var]]\" FROM public.data_processed_vgp_cleaned WHERE \"Speed\" >= 1 AND (COALESCE(${user_var}, 'All') = 'All' OR participant_virtual_id IN (${user_var:csv})) ORDER BY time;",
+          "format": "time_series"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 6 }
+    },
+    {
+      "id": 2,
+      "type": "geomap",
+      "title": "Localized Pollution Map",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT g.lat, g.lon, AVG(d.\"[[pollutant_var]]\") AS pollution_level FROM public.clean_gps_cleaned g JOIN public.data_processed_vgp_cleaned d ON g.participant_virtual_id = d.participant_virtual_id AND g.time = d.time WHERE d.\"Speed\" >= 1 AND g.lat BETWEEN 47.5 AND 50.5 AND g.lon BETWEEN 1.5 AND 7.0 GROUP BY g.lat, g.lon ORDER BY pollution_level DESC;",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 6 }
+    }
+    ,
+    {
+      "id": 3,
+      "type": "barchart",
+      "title": "Average Pollution Per Hour",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT DATE_TRUNC('hour', time) AS time, AVG(\"[[pollutant_var]]\") AS avg_value FROM public.data_processed_vgp_cleaned WHERE \"Speed\" >= 1 AND (COALESCE(${user_var}, 'All') = 'All' OR participant_virtual_id IN (${user_var:csv})) GROUP BY time ORDER BY time;",
+          "format": "time_series"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 6 }
+    },
+    {
+      "id": 4,
+      "type": "barchart",
+      "title": "Pollution Levels Across Activities",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT activity, AVG(\"[[pollutant_var]]\") AS avg_pollution, COUNT(*) AS records FROM public.data_processed_vgp_cleaned WHERE \"Speed\" >= 1 AND (COALESCE(${user_var}, 'All') = 'All' OR participant_virtual_id IN (${user_var:csv})) GROUP BY activity ORDER BY avg_pollution DESC;",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 6 }
+    }
+    
+    ,
+    {
+      "id": 5,
+      "type": "michaeldmoore-scatter-panel",
+      "title": "Speed vs [[pollutant_var]] Levels",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT \"Speed\", \"[[pollutant_var]]\" FROM public.data_processed_vgp_cleaned WHERE \"Speed\" >= 1 AND (COALESCE(${user_var}, 'All') = 'All' OR participant_virtual_id IN (${user_var:csv})) ORDER BY \"Speed\";",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 6 }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Average Speed by Activity Type",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT activity, AVG(\"Speed\") AS avg_speed FROM public.data_processed_vgp_cleaned WHERE \"Speed\" > 0 GROUP BY activity ORDER BY avg_speed DESC;",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 6 }
+    }
+    
+    ,
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Impact of Humidity on Pollution",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(\"Humidity\"::numeric, -1)::TEXT AS humidity_range, AVG(\"[[pollutant_var]]\") AS avg_pollution FROM public.data_processed_vgp_cleaned WHERE (COALESCE(${user_var}, 'All') = 'All' OR participant_virtual_id IN (${user_var:csv})) AND \"[[pollutant_var]]\" IS NOT NULL GROUP BY humidity_range ORDER BY humidity_range;",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 6 }
+    }
+    
+    ,
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Correlation Between Temperature, Humidity & [[pollutant_var]]",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT CORR(\"Temperature\", \"[[pollutant_var]]\") AS temp_pollutant_corr, CORR(\"Humidity\", \"[[pollutant_var]]\") AS humidity_pollutant_corr FROM public.data_processed_vgp_cleaned WHERE \"[[pollutant_var]]\" IS NOT NULL;",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "x": 18, "y": 0, "w": 12, "h": 4 }
+    }
+    ,
+    {
+      "id": 10,
+      "type": "barchart",
+      "title": "Pollution Levels Across Temperature & Humidity Zones",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT CONCAT(ROUND(\"Temperature\"::numeric, -1), '°C') AS temp_range, CONCAT(ROUND(\"Humidity\"::numeric, -1), '%') AS humidity_range, AVG(\"[[pollutant_var]]\") AS avg_pollutant FROM public.data_processed_vgp_cleaned WHERE \"[[pollutant_var]]\" IS NOT NULL GROUP BY temp_range, humidity_range ORDER BY temp_range, humidity_range;",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 6 }
+    },
+    {
+      "id": 11,
+      "type": "geomap",
+      "title": "User Trajectory Map",
+      "datasource": { "type": "postgres", "uid": "grafana-postgresql-datasource" },
+      "targets": [
+        {
+          "rawSql": "SELECT lat, lon, time FROM public.clean_gps_cleaned WHERE (COALESCE(${user_var}, 'All') = 'All' OR participant_virtual_id IN (${user_var:csv})) ORDER BY participant_virtual_id, time;",
+          "format": "table"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 3,  
+            "pointSize": 0,  
+            "lineColor": "red",  
+            "showLines": true,  
+            "showPoints": false  
+          }
+        }
+      },
+      "mapConfig": {
+        "view": {
+          "fitBounds": true,  
+          "minZoom": 10,  
+          "maxZoom": 18  
+        },
+        "layers": [
+          {
+            "type": "geojson",
+            "config": {
+              "features": "lines"
+            }
+          }
+        ]
+      }
+    }
+    
+    
+    
+    
+    
+  ]
+}
